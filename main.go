@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/xml"
-	"errors"
 	"flag"
 	"fmt"
 	"io/fs"
@@ -10,53 +9,63 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 
 	"github.com/shirou/gopsutil/process"
 	"golang.org/x/text/width"
 )
 
-
-
 func main() {
-	srcpath := flag.String("srcpath", "F:\\Videos\\TVRec", "save video path")
-	SCtitle := flag.String("title", "title", "Anime's name")
-	SCsubtitle := flag.String("subtitle", "subtitle", "episode title")
-	SCnumber := flag.String("number", "number", "episode number")
-	procPreventShutdown := flag.String("process", "", "process that prevent shutdown")
-	APIURL := flag.String("url", "localhost:5510", "EDCB IP:port")
+	args := make([]string, 6)
+	args[0] = "srcpath"
+	args[1] = "title"
+	args[2] = "subtitle"
+	args[3] = "number"
+	args[4] = "process"
+	args[5] = "ip"
+
+	srcpath := flag.String(args[0], "", "save video path")
+	SCtitle := flag.String(args[1], "title", "Anime's name")
+	SCsubtitle := flag.String(args[2], "subtitle", "episode title")
+	SCnumber := flag.String(args[3], "number", "episode number")
+	procPreventShutdown := flag.String(args[4], "", "process that prevent shutdown")
+	APIURL := flag.String(args[5], "localhost:5510", "EpgTimer's HTTP server, IP:port")
 	flag.Parse()
+
+	if err := CheckArg(*SCtitle, args); err != nil {
+		Errorlog(err)
+		return
+	}
 
 	err := dirTidy(srcpath, SCtitle, SCsubtitle, SCnumber)
 	if err != nil {
 		fmt.Println("Error occured:", err)
 		return
 	}
-	
+
 	url := "http://" + *APIURL + "/api/EnumReserveInfo"
 	body, err := APIReq2Body(url)
 	if err != nil {
-		fmt.Println("Error Occured:", err)
+		Errorlog(err)
 	}
-	
+
 	var entry Entry
 	err = xml.Unmarshal(body, &entry)
 	if err != nil {
-		fmt.Println(err)
+		Errorlog(err)
 	}
 
 	hasReserve, err := HasRemainReserve(&entry)
 	if hasReserve {
 		if err != nil {
-			fmt.Println(err)
+			Errorlog(err)
 		}
 		return
 	}
 
-	isExec, err := NoShutdownTrigger(*procPreventShutdown);
+	isExec, err := NoShutdownTrigger(*procPreventShutdown)
 	if err != nil {
-		fmt.Println(err)
+		Errorlog(err)
 		return
 	}
 	if isExec {
@@ -65,7 +74,7 @@ func main() {
 
 	// shutdown
 	if ExecShutdown() != nil {
-		fmt.Println(err)
+		Errorlog(err)
 	}
 }
 
@@ -77,11 +86,12 @@ func dirTidy(srcpath, SCtitle, SCsubtitle, SCnumber *string) error {
 		if err != nil {
 			return err
 		}
-
-		if (!strings.Contains(path, *SCtitle) || info.IsDir()) {
+		FileFoundLog(path)
+		if !strings.Contains(path, *SCtitle) || info.IsDir() {
 			return nil
 		}
-		if !(filepath.Dir(path) == filepath.Join(*srcpath, half_title)) {
+
+		if !(filepath.Dir(path) == filepath.Join(*srcpath, *SCtitle)) {
 			files = append(files, path)
 		}
 		return nil
@@ -89,7 +99,6 @@ func dirTidy(srcpath, SCtitle, SCsubtitle, SCnumber *string) error {
 	if err != nil {
 		return err
 	}
-
 	if len(files) < 1 {
 		return FileUnsatisfiedError(len(files))
 	}
@@ -110,6 +119,10 @@ func dirTidy(srcpath, SCtitle, SCsubtitle, SCnumber *string) error {
 }
 
 func NoShutdownTrigger(targetProcess string) (bool, error) {
+	if targetProcess == "" {
+		return false, nil
+	}
+
 	processes, err := process.Processes()
 	if err != nil {
 		return false, err
@@ -144,14 +157,6 @@ func ExecShutdown() error {
 		}
 		return nil
 	}
-	
+
 	return UnSupoortedOSError()
-}
-
-func UnSupoortedOSError() error {
-	return errors.New("This OS is not supported: " + runtime.GOOS)
-}
-
-func FileUnsatisfiedError(i int) error {
-	return errors.New("File unsatisfied error: target files are required but " + strconv.Itoa(i))
 }
