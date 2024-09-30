@@ -17,7 +17,6 @@ func FileUnsatisfiedError(i int) error {
 }
 
 func UnSupoortedCharCodeError(s string) error {
-	fmt.Println("Loaded title:	", s)
 	return errors.New("Unsupported character code: Garbled text might be occurring. \nIf you are using a .bat file in the command prompt, please add \"chcp 65001\" at the beginning to load it as UTF-8 encoding.\n")
 }
 
