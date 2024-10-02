@@ -37,6 +37,7 @@ func main() {
 		return
 	}
 
+	SCLog(*SCtitle, *SCsubtitle, *SCnumber)
 	err := dirTidy(srcpath, SCtitle, SCsubtitle, SCnumber)
 	if err != nil {
 		fmt.Println("Error occured:", err)
