@@ -16,7 +16,7 @@ EDCB の録画後実行用スクリプト
 
 ```
 chcp 65001
-epg-cycler.exe -title=$SCtitle$ -subtitle=$SCsubtitle$ -number=$SCnumber$ -process=something.exe
+epg-cycler.exe -srcpath="save/path" -originpath=$FilePath$ -title=$TitleF$ -basename=$FileName$ -process="something.exe"
 ```
 
 のような bat ファイルを作り，EpgTimer 側の録画後実行 bat に設定します．

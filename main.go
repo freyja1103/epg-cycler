@@ -4,7 +4,6 @@ import (
 	"encoding/xml"
 	"flag"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,27 +17,28 @@ import (
 func main() {
 	args := make([]string, 6)
 	args[0] = "srcpath"
-	args[1] = "title"
-	args[2] = "subtitle"
-	args[3] = "number"
-	args[4] = "process"
-	args[5] = "ip"
-
-	srcpath := flag.String(args[0], "", "save video path")
-	SCtitle := flag.String(args[1], "title", "Anime's name")
-	SCsubtitle := flag.String(args[2], "subtitle", "episode title")
-	SCnumber := flag.String(args[3], "number", "episode number")
-	procPreventShutdown := flag.String(args[4], "", "process that prevent shutdown")
-	APIURL := flag.String(args[5], "localhost:5510", "EpgTimer's HTTP server, IP:port")
+	args[1] = "originpath"
+	args[2] = "title"
+	args[3] = "basename"
+	args[4] = "number"
+	args[5] = "process"
+	args[6] = "ip"
+	save_path := flag.String(args[0], "", "save video path")
+	origin_path := flag.String(args[1], "", "origin video path")
+	title := flag.String(args[2], "", "a program's name")
+	basename := flag.String(args[3], "", "filename without ext")
+	number := flag.String(args[4], "number", "episode number")
+	procPreventShutdown := flag.String(args[5], "", "process that prevent shutdown")
+	APIURL := flag.String(args[6], "localhost:5510", "EpgTimer's HTTP server, IP:port")
 	flag.Parse()
 
-	if err := CheckArg(*SCtitle, args); err != nil {
+	if err := CheckArg(*title, args); err != nil {
 		Errorlog(err)
 		return
 	}
 
-	SCLog(*SCtitle, *SCsubtitle, *SCnumber)
-	err := dirTidy(srcpath, SCtitle, SCsubtitle, SCnumber)
+	SCLog(*title, *basename, *number)
+	err := dirTidy(save_path, origin_path, title, basename)
 	if err != nil {
 		fmt.Println("Error occured:", err)
 		return
@@ -79,38 +79,17 @@ func main() {
 	}
 }
 
-func dirTidy(srcpath, SCtitle, SCsubtitle, SCnumber *string) error {
-	var files []string
-	var err error
-	half_title := width.Fold.String(*SCtitle)
-	err = filepath.WalkDir(*srcpath, func(path string, info fs.DirEntry, err error) error {
+func dirTidy(save_path, origin_path, title, basename *string) error {
+	var files = []string{*origin_path, *origin_path + ".err", *origin_path + ".program.txt"}
+	var half_title string
+	if isNotValidFilename(*title) {
+		err := OperateFile(*save_path, *origin_path, *title, files)
 		if err != nil {
 			return err
 		}
-		FileFoundLog(path)
-		if !strings.Contains(path, *SCtitle) || info.IsDir() {
-			return nil
-		}
-
-		if !(filepath.Dir(path) == filepath.Join(*srcpath, *SCtitle)) {
-			files = append(files, path)
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	if len(files) < 1 {
-		return FileUnsatisfiedError(len(files))
-	}
-
-	err = os.Mkdir(half_title, 0755)
-	if err != nil && os.IsNotExist(err) {
-		return err
-	}
-
-	for _, file := range files {
-		err := os.Rename(file, filepath.Join(filepath.Dir(file), half_title, width.Fold.String(filepath.Base(file))))
+	} else {
+		half_title = width.Fold.String(*title)
+		err := OperateFile(*save_path, *origin_path, half_title, files)
 		if err != nil {
 			return err
 		}
@@ -160,4 +139,29 @@ func ExecShutdown() error {
 	}
 
 	return UnSupoortedOSError()
+}
+
+func isNotValidFilename(s string) bool {
+	invalidChars := `<>:"/\|?*`
+	for _, char := range invalidChars {
+		if strings.ContainsRune(s, char) {
+			return true
+		}
+	}
+	return false
+}
+
+func OperateFile(save_path, origin_path, title string, files []string) error {
+	err := os.Mkdir(title, 0755)
+	if err != nil && os.IsNotExist(err) {
+		return err
+	}
+
+	for _, file := range files {
+		err := os.Rename((filepath.Join(filepath.Dir(origin_path), file)), filepath.Join(save_path, title, width.Fold.String(file)))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
