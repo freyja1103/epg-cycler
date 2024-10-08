@@ -1,15 +1,21 @@
 package main
 
-import "fmt"
+import (
+	"log"
+)
 
-func FileFoundLog(s string) (int, error) {
-	return DebugLog("File found", s)
+func FileFoundLog(s string) {
+	DebugLog("File found", s)
 }
 
-func SCLog(title, subtitle, number string) (int, error) {
-	return fmt.Printf("TS info from EPG:\nTitle:	%v\nSubtitle:	%v	Episode:	%v\n", title, subtitle, number)
+func SrcLog(title, basename, number string) {
+	log.Printf("TS info from EPG: Title:	%v Basename: %v	Episode: %v\n", title, basename, number)
 }
 
-func DebugLog(msg string, s ...string) (int, error) {
-	return fmt.Printf("%v:	%v\n", msg, s)
+func DebugLog(msg string, s ...string) {
+	if s == nil {
+		log.Println(msg)
+		return
+	}
+	log.Printf("%v:	%v\n", msg, s)
 }
