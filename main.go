@@ -151,13 +151,16 @@ func SearchNotTidyFiles(save_path string) ([]string, error) {
 
 func dirTidy(save_path, origin_path string, title, basename *string) error {
 	// basename -> $FileName$
-	var ts_filename string = *basename + ".ts"
-	var half_title string
-	var subtitle string
-	var err error
-	var files []string
-	var fold_ts_filename = width.Fold.String(*basename + ".ts")
-	half_title = width.Fold.String(*title)
+	var (
+		ts_filename      string   = *basename + ".ts"
+		fold_ts_filename string   = width.Fold.String(*basename + ".ts")
+		half_title       string   = width.Fold.String(*title)
+		files            []string = []string{ts_filename, ts_filename + ".err", ts_filename + ".program.txt"}
+		converted_files  []string
+		subtitle         string
+		program_name     string
+		err              error
+	)
 
 	isInvalid, _ := isInvalidName(*basename)
 	if isInvalid {
@@ -172,37 +175,26 @@ func dirTidy(save_path, origin_path string, title, basename *string) error {
 		isInvalidProgramName, _ := isInvalidName(origin_program_name)
 		if !isInvalidProgramName && isInvalidSubtitle {
 			// only subtitle is invalid
-			program_name := GetProgramName(width.Fold.String(*basename))
-			files = []string{ts_filename, ts_filename + ".err", ts_filename + ".program.txt"}
 			conv_ts_filename := half_title + " " + regexp.MustCompile("#\\d+").FindString(fold_ts_filename) + "「" + subtitle + "」" + regexp.MustCompile("_[0-9]{8}").FindString(*basename) + ".ts"
-			conv_files := []string{conv_ts_filename, conv_ts_filename + ".err", conv_ts_filename + ".program.txt"}
-			err := OperateFile(save_path, origin_path, half_title, program_name, files, conv_files)
-			if err != nil {
-				return err
+			converted_files = []string{conv_ts_filename, conv_ts_filename + ".err", conv_ts_filename + ".program.txt"}
+			program_name = GetProgramName(width.Fold.String(*basename))
+
+		} else {
+			half_title = *title
+			if strings.HasSuffix(origin_program_name, " ") {
+				origin_program_name = origin_program_name[:len(origin_program_name)-1]
 			}
-			return nil
+			converted_files = files
+			program_name = width.Widen.String(origin_program_name)
 		}
-
-		files = []string{ts_filename, ts_filename + ".err", ts_filename + ".program.txt"}
-		if strings.HasSuffix(origin_program_name, " ") {
-			origin_program_name = origin_program_name[:len(origin_program_name)-1]
-		}
-		widen_program_name := width.Widen.String(origin_program_name)
-		err := OperateFile(save_path, origin_path, *title, widen_program_name, files, files)
-		if err != nil {
-			return err
-		}
-		return nil
-
 	} else {
-		files = []string{ts_filename, ts_filename + ".err", ts_filename + ".program.txt"}
-		folded_files := []string{fold_ts_filename, fold_ts_filename + ".err", fold_ts_filename + ".program.txt"}
-		program_name := GetProgramName(width.Fold.String(*basename))
+		converted_files = []string{fold_ts_filename, fold_ts_filename + ".err", fold_ts_filename + ".program.txt"}
+		program_name = GetProgramName(width.Fold.String(*basename))
+	}
 
-		err := OperateFile(save_path, origin_path, half_title, program_name, files, folded_files)
-		if err != nil {
-			return err
-		}
+	err = OperateFile(save_path, origin_path, half_title, program_name, files, converted_files)
+	if err != nil {
+		return err
 	}
 
 	return nil
