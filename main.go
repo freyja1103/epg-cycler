@@ -4,12 +4,10 @@ import (
 	"encoding/xml"
 	"errors"
 	"flag"
-	"io/fs"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 
@@ -42,39 +40,13 @@ func main() {
 	save_path := strings.ReplaceAll(filepath.ToSlash(*s_path), "//", "/")
 	origin_path := strings.ReplaceAll(filepath.ToSlash(*o_path), "//", "/")
 
-	// 一括整理モード isInvalidName使ってないので多分まだ動かない
+	// 一括整理モード
 	if *all_tidy_mode {
-		files, err := SearchNotTidyFiles(save_path)
-		if err != nil {
+		if err := TidyAllFiles(save_path); err != nil {
 			Errorlog(err)
 			return
 		}
-		for _, file := range files {
-			program_name := GetProgramName(filepath.Base(file))
-			program_save_path := filepath.Join(save_path, program_name)
-
-			if strings.HasSuffix(program_save_path, " ") {
-				program_save_path = program_save_path[:len(program_save_path)-1]
-			}
-			err := os.Mkdir(program_save_path, 0755)
-			if err != nil && !os.IsExist(err) {
-				Errorlog(err)
-			}
-
-			save := width.Fold.String(filepath.Join(program_save_path, filepath.Base(file)))
-			log.Println("From: ", file)
-			log.Println("To: ", save)
-			err = os.Rename(file, save)
-			if err != nil {
-				if errors.Is(err, os.ErrNotExist) {
-					log.Printf("The file or directory does not exist: %s, %s\n", file, save)
-					continue
-				}
-				Errorlog(err)
-				log.Println("May be invaild filename, skipped: ", save)
-				continue
-			}
-		}
+		return
 	}
 
 	if !(*all_tidy_mode) {
@@ -127,28 +99,6 @@ func main() {
 
 }
 
-func SearchNotTidyFiles(save_path string) ([]string, error) {
-	files := []string{}
-	filepath.WalkDir(save_path, func(path string, info fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		path = filepath.ToSlash(path)
-
-		if filepath.ToSlash(filepath.Dir(path)) == save_path && !info.Type().IsDir() {
-			if strings.Contains(filepath.Ext(path), ".ts") || strings.Contains(filepath.Ext(path), ".err") || strings.Contains(filepath.Ext(path), ".txt") {
-				files = append(files, path)
-			}
-
-		}
-		return nil
-	})
-	for _, v := range files {
-		log.Println(v)
-	}
-	return files, nil
-}
-
 func dirTidy(save_path, origin_path string, title, basename *string) error {
 	// basename -> $FileName$
 	var (
@@ -161,7 +111,7 @@ func dirTidy(save_path, origin_path string, title, basename *string) error {
 		program_name     string
 		err              error
 	)
-
+	origin_program_name, ep_string := GetProgramName(*basename)
 	isInvalid, _ := isInvalidName(*basename)
 	if isInvalid {
 		DebugLog("Will be invalid filename, no convert fold style")
@@ -170,26 +120,26 @@ func dirTidy(save_path, origin_path string, title, basename *string) error {
 			return err
 		}
 
-		origin_program_name := GetProgramName(*basename)
 		isInvalidSubtitle, _ := isInvalidName(subtitle)
 		isInvalidProgramName, _ := isInvalidName(origin_program_name)
 		if !isInvalidProgramName && isInvalidSubtitle {
 			// only subtitle is invalid
-			conv_ts_filename := half_title + " " + regexp.MustCompile("#\\d+").FindString(fold_ts_filename) + "「" + subtitle + "」" + regexp.MustCompile("_[0-9]{8}").FindString(*basename) + ".ts"
+			conv_ts_filename := ConcatFilename(*basename, half_title, width.Widen.String(subtitle), ep_string, ".ts")
 			converted_files = []string{conv_ts_filename, conv_ts_filename + ".err", conv_ts_filename + ".program.txt"}
-			program_name = GetProgramName(width.Fold.String(*basename))
+			program_name = origin_program_name
 
 		} else {
 			half_title = *title
 			if strings.HasSuffix(origin_program_name, " ") {
 				origin_program_name = origin_program_name[:len(origin_program_name)-1]
 			}
-			converted_files = files
+			conv_ts_filename := ConcatFilename(*basename, half_title, width.Widen.String(subtitle), ep_string, ".ts")
+			converted_files = []string{conv_ts_filename, conv_ts_filename + ".err", conv_ts_filename + ".program.txt"}
 			program_name = width.Widen.String(origin_program_name)
 		}
 	} else {
 		converted_files = []string{fold_ts_filename, fold_ts_filename + ".err", fold_ts_filename + ".program.txt"}
-		program_name = GetProgramName(width.Fold.String(*basename))
+		program_name = origin_program_name
 	}
 
 	err = OperateFile(save_path, origin_path, half_title, program_name, files, converted_files)
@@ -223,22 +173,26 @@ func NoShutdownTrigger(targetProcess string) (bool, error) {
 
 func ExecShutdown() error {
 	if runtime.GOOS == "windows" {
-		exec := exec.Command(
-			"C:\\Windows\\System32\\shutdown.exe",
-			"/s /t 60 /f /c 'shutdown by epg-cycler after 60s'",
-		)
-		if exec.Err != nil {
-			return exec.Err
+		cmd := exec.Command("C:\\Windows\\System32\\shutdown.exe", "/s", "/t", "60", "/f", "/c", "shutdown by epg-cycler after 60s")
+		if cmd.Err != nil {
+			return cmd.Err
 		}
 		DebugLog("execute shutdown")
+		// Runだとシャットダウンし終えるまで処理が進まなくなるのでStartを使う
+		if err := cmd.Start(); err != nil {
+			return err
+		}
 		return nil
 	}
 	if runtime.GOOS == "darwin" {
-		exec := exec.Command("shutdown", "-h now")
-		if exec.Err != nil {
-			return exec.Err
+		cmd := exec.Command("shutdown", "-h now")
+		if cmd.Err != nil {
+			return cmd.Err
 		}
 		DebugLog("execute shutdown")
+		if err := cmd.Start(); err != nil {
+			return err
+		}
 		return nil
 	}
 
