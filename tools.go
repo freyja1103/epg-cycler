@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -222,5 +223,16 @@ func TidyAllFiles(save_path string) error {
 			continue
 		}
 	}
+	return nil
+}
+
+type targetProcesses []string
+
+func (tp *targetProcesses) String() string {
+	return fmt.Sprintf("%v", tp)
+}
+
+func (tp *targetProcesses) Set(value string) error {
+	*tp = append(*tp, value)
 	return nil
 }

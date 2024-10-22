@@ -17,6 +17,7 @@ import (
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	var tp targetProcesses
 
 	args := make([]string, 8)
 	args[0] = "srcpath"
@@ -32,7 +33,7 @@ func main() {
 	title := flag.String(args[2], "", "a program's name")
 	basename := flag.String(args[3], "", "filename without ext")
 	number := flag.String(args[4], "number", "episode number")
-	procPreventShutdown := flag.String(args[5], "", "process that prevent shutdown")
+	flag.Var(&tp, "process", "process that prevent shutdown")
 	APIURL := flag.String(args[6], "localhost:5510", "EpgTimer's HTTP server, IP:port")
 	all_tidy_mode := flag.Bool(args[7], false, "The mode for sorting all the recording files in the directory at once")
 	flag.Parse()
@@ -82,13 +83,15 @@ func main() {
 			return
 		}
 
-		isExec, err := NoShutdownTrigger(*procPreventShutdown)
-		if err != nil {
-			Errorlog(err)
-			return
-		}
-		if isExec {
-			return
+		for _, p := range tp {
+			isExec, err := NoShutdownTrigger(p)
+			if err != nil {
+				Errorlog(err)
+				return
+			}
+			if isExec {
+				return
+			}
 		}
 
 		// shutdown
