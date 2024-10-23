@@ -28,6 +28,9 @@ func GetProgramName(basename string) (string, string) {
 		name, match, exist = GetNameByRegx(`#[0-9]+`, basename)
 	}
 	if !exist {
+		name, match, exist = GetNameByRegx(`♯[0-9]+`, basename)
+	}
+	if !exist {
 		name, match, exist = GetNameByRegx(`第[0-9]+期`, basename)
 	}
 	if !exist {
