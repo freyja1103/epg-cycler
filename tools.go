@@ -229,7 +229,7 @@ func TidyAllFiles(save_path string) error {
 type targetProcesses []string
 
 func (tp *targetProcesses) String() string {
-	return fmt.Sprintf("%v", tp)
+	return fmt.Sprintf("%v", *tp)
 }
 
 func (tp *targetProcesses) Set(value string) error {
