@@ -76,14 +76,14 @@ func APIReq2Body(url string) ([]byte, error) {
 	return body, nil
 }
 
-func HasRemainReserve(entry *Entry) (bool, error) {
+func HasRemainReserve(entry *Entry) (bool, []TimeInfo, error) {
 	now := time.Now()
-	date := (now.Format("2006/01/02"))
+	nowDate, _ := time.Parse("2006/01/02", now.Format("2006/01/02"))
 	var timeList []TimeInfo
 	for _, reserve := range entry.Items.ReserveInfo {
 		startDate, startTime, err := ParseTime(reserve.StartDate, reserve.StartTime)
 		if err != nil {
-			return true, err
+			return true, nil, err
 		}
 		// 同じ日付または次の日の4時までの予約を対象とする
 		if 0 <= now.Hour() || now.Hour() <= 4 {
@@ -95,7 +95,7 @@ func HasRemainReserve(entry *Entry) (bool, error) {
 			}
 		}
 		if now.Hour() > 4 {
-			if date == reserve.StartDate {
+			if nowDate == startDate || (nowDate.Day()+1 == startDate.Day() && startTime.Hour() < 4) {
 				timeList = append(timeList, TimeInfo{
 					reserve.StartDate,
 					reserve.StartTime,
@@ -103,8 +103,7 @@ func HasRemainReserve(entry *Entry) (bool, error) {
 			}
 		}
 	}
-
-	return len(timeList) >= 1, nil
+	return len(timeList) >= 1, timeList, nil
 }
 
 func ParseTime(d string, t string) (time.Time, time.Time, error) {

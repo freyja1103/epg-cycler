@@ -75,7 +75,7 @@ func main() {
 			Errorlog(err)
 		}
 
-		hasReserve, err := HasRemainReserve(&entry)
+		hasReserve, _, err := HasRemainReserve(&entry)
 		if hasReserve {
 			if err != nil {
 				Errorlog(err)
