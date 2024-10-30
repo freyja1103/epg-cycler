@@ -20,21 +20,9 @@ func GetProgramName(basename string) (string, string) {
 	var exist bool
 	var name string
 
-	name, match, exist := GetNameByRegx(`第[0-9]+話`, basename)
-	if !exist {
-		name, match, exist = GetNameByRegx(`#[0-9]+`, basename)
-	}
-	if !exist {
-		name, match, exist = GetNameByRegx(`♯[0-9]+`, basename)
-	}
-	if !exist {
-		name, match, exist = GetNameByRegx(`第[0-9]+期`, basename)
-	}
+	name, match, exist := GetNameByRegx(`(第|#|♯|\()[0-9]+(話|\))?`, basename)
 	if !exist {
 		name, match, exist = GetNameByRegx(`_`, basename)
-	}
-	if !exist {
-		name, match, exist = GetNameByRegx(`([0-9]+)`, basename)
 	}
 	if !exist {
 		// たまにイレギュラーで ★最終話 みたいなのがあるので最終手段
@@ -48,6 +36,7 @@ func GetProgramName(basename string) (string, string) {
 		}
 		return basename[end_brackets:strings.Index(basename, " ")], match
 	}
+	name, _ = strings.CutSuffix(name, " ")
 	return name, match
 }
 
