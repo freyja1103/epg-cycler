@@ -1,7 +1,7 @@
 ## EPG-CYCLER
 
 常時起動しないシステムでの EDCB の録画後実行用スクリプト
-※動作テスト中
+(ほぼアニメ向け)
 
 ### 動作
 
@@ -13,7 +13,7 @@
 ### 使い方
 
 -   EpgTimer 側で HTTP サーバを有効化しておきます．
--   `go build`した後に，
+-   `go build .` or [release](https://github.com/freyja1103/epg-cycler/releases) からダウンロードした後に，
 
 ```
 chcp 65001
@@ -25,4 +25,8 @@ epg-cycler.exe -srcpath="save/path" -originpath=$FilePath$ -title=$TitleF$ -base
 -   IP とポート番号を指定する場合は，実行時に`-ip=192.168.0.2:7777`のように追記してください．
     -   デフォルトの値は`localhost:5510`です．
 -   `-process`は必須ではありません．
--   `chcp 65001`は文字化け回避のために記述してください．
+-   `chcp 65001`は文字化けするかもしれないので記述してください．
+
+#### ほか
+
+-   一括整理用に`-all`オプション作りました．`-savepath`と併せて使ってください．
