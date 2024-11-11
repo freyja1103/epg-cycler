@@ -20,6 +20,7 @@ var testcase []string = []string{
 	"２．５次元の誘惑（リリサ）　＃１４「あなたと一緒に」_20241004.ts.program.txt",
 	"アイドルマスター　シャイニーカラーズ　2nd　第2話「Straylight.run()／／playback」_20241012.ts",
 	"魔王様、リトライ！Ｒ　＃５「リマインド －ＲｅＭｉｎｄ－」_20241102.ts.program.txt",
+	"アニメ ラブライブ!スーパースター!! 3期(6)_20241110.ts.program",
 }
 
 var correctcase []string = []string{
@@ -28,4 +29,5 @@ var correctcase []string = []string{
 	"2.5次元の誘惑(リリサ)",
 	"アイドルマスター シャイニーカラーズ 2nd",
 	"魔王様、リトライ!R",
+	"アニメ ラブライブ!スーパースター!! 3期",
 }
