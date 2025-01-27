@@ -54,21 +54,13 @@ func GetSubtitle(s string) (string, error) {
 	}
 
 	var match_ep []int
-
-	match_date := regex_date.FindStringIndex(s)
-
-	if regex_ep_kanji.MatchString(s) {
-		match_ep = regex_ep_kanji.FindStringIndex(s)
-		return strings.TrimSpace(s[match_ep[1]:match_date[0]]), nil
-	}
-	if regex_ep_shrp.MatchString(s) {
-		match_ep = regex_ep_shrp.FindStringIndex(s)
-		return strings.TrimSpace(s[match_ep[1]:match_date[0]]), nil
-	}
-	if regex_ep_brkt.MatchString(s) {
-		match_ep = regex_ep_shrp.FindStringIndex(s)
-		log.Println(match_ep, match_date)
-		return strings.TrimSpace(s[match_ep[1]:match_date[0]]), nil
+	date_idx := regexp_date.FindStringIndex(s)
+	if regexp_episode.MatchString(s) {
+		match_ep = regexp_episode.FindStringIndex(s)
+		if len(match_ep) == 0 {
+			return "", SubtitleNotFoundError(s)
+		}
+		return strings.TrimSpace(s[match_ep[0]:date_idx[1]]), nil
 	}
 	return "", SubtitleNotFoundError(s)
 }
@@ -107,14 +99,8 @@ func isInvalidName(s string) (bool, []string) {
 }
 
 func GetEpisodeName(s string) string {
-	if regex_ep_kanji.MatchString(s) {
-		return regex_ep_kanji.FindString(s)
-	}
-	if regex_ep_shrp.MatchString(s) {
-		return regex_ep_shrp.FindString(s)
-	}
-	if regex_ep_brkt.MatchString(s) {
-		return regex_ep_brkt.FindString(s)
+	if regexp_episode.MatchString(s) {
+		return regexp_episode.FindString(s)
 	}
 	return ""
 }
@@ -159,17 +145,19 @@ func TidyAllFiles(save_path string) error {
 	if err != nil {
 		return err
 	}
+
 	for _, file := range files {
 		filename = filepath.Base(file)
 		folded_program_name, ep_string := GetProgramName(filename)
-
+		log.Println("program_name: ", filename)
 		subtitle, err := GetSubtitle(filename)
-		if err != nil {
-			if errors.Is(err, SubtitleNotFoundError(filename)) {
-				subtitle = ""
-			}
+		if err != nil && !errors.Is(err, SubtitleNotFoundError(filename)) {
+			log.Fatal(err)
+			return err
 		}
-
+		if errors.Is(err, SubtitleNotFoundError(filename)) {
+			subtitle = ""
+		}
 		isInvalid, _ := isInvalidName(width.Fold.String(filename))
 		isInvalidSubtitle, _ := isInvalidName(subtitle)
 		isInvalidProgramName, _ := isInvalidName(folded_program_name)

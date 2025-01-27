@@ -16,6 +16,7 @@ import (
 )
 
 func main() {
+
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	var tp targetProcesses
 
@@ -27,7 +28,7 @@ func main() {
 	args[4] = "number"
 	args[5] = "process"
 	args[6] = "ip"
-	args[7] = "all-tidy"
+	args[7] = "all"
 	s_path := flag.String(args[0], "", "save video path")
 	o_path := flag.String(args[1], "", "origin video path")
 	title := flag.String(args[2], "", "a program's name")
