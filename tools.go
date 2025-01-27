@@ -57,7 +57,10 @@ func GetSubtitle(s string) (string, error) {
 	date_idx := regexp_date.FindStringIndex(s)
 	if regexp_episode.MatchString(s) {
 		match_ep = regexp_episode.FindStringIndex(s)
-		return strings.TrimSpace(s[match_ep[1]:date_idx[0]]), nil
+		if len(match_ep) == 0 {
+			return "", SubtitleNotFoundError(s)
+		}
+		return strings.TrimSpace(s[match_ep[0]:date_idx[1]]), nil
 	}
 	return "", SubtitleNotFoundError(s)
 }
@@ -142,17 +145,19 @@ func TidyAllFiles(save_path string) error {
 	if err != nil {
 		return err
 	}
+
 	for _, file := range files {
 		filename = filepath.Base(file)
 		folded_program_name, ep_string := GetProgramName(filename)
-
+		log.Println("program_name: ", filename)
 		subtitle, err := GetSubtitle(filename)
-		if err != nil {
-			if errors.Is(err, SubtitleNotFoundError(filename)) {
-				subtitle = ""
-			}
+		if err != nil && !errors.Is(err, SubtitleNotFoundError(filename)) {
+			log.Fatal(err)
+			return err
 		}
-
+		if errors.Is(err, SubtitleNotFoundError(filename)) {
+			subtitle = ""
+		}
 		isInvalid, _ := isInvalidName(width.Fold.String(filename))
 		isInvalidSubtitle, _ := isInvalidName(subtitle)
 		isInvalidProgramName, _ := isInvalidName(folded_program_name)

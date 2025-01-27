@@ -21,6 +21,7 @@ var testcase []string = []string{
 	"アイドルマスター　シャイニーカラーズ　2nd　第2話「Straylight.run()／／playback」_20241012.ts",
 	"魔王様、リトライ！Ｒ　＃５「リマインド －ＲｅＭｉｎｄ－」_20241102.ts.program.txt",
 	"アニメ ラブライブ!スーパースター!! 3期(6)_20241110.ts.program",
+	"『アオのハコ』　第１４話　どういう文脈？_20250109.ts",
 }
 
 var correctcase []string = []string{
@@ -30,4 +31,5 @@ var correctcase []string = []string{
 	"アイドルマスター シャイニーカラーズ 2nd",
 	"魔王様、リトライ!R",
 	"アニメ ラブライブ!スーパースター!! 3期",
+	"『アオのハコ』",
 }
