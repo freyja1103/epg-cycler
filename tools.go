@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -28,7 +29,7 @@ func GetProgramName(basename string) (string, string) {
 	if !exist {
 		// たまにイレギュラーで ★最終話 みたいなのがあるので最終手段
 		// タイトル内でスペース区切りの場合は対応してません
-		logging.Warn(WarnProgramName().Error())
+		logging.Warn("the format of the program name is not supported. the name of the created directory may differ from the actual program name.")
 		if strings.Index(basename, "[") == 0 {
 			end_brackets = strings.Index(basename, "]") + 1
 		}
@@ -73,7 +74,7 @@ func GetNameByRegx(expr, basename string) (string, string, bool) {
 		if regex.MatchString(basename) {
 			matches := regex.FindAllString(basename, -1)
 			name := basename[:strings.Index(basename, matches[0])+7]
-			logging.Info("reg: ", matches, name)
+			logging.Info("reg", slog.Any("matches", matches), slog.String("name", name))
 			return name, matches[0], true
 		}
 	}
@@ -82,7 +83,7 @@ func GetNameByRegx(expr, basename string) (string, string, bool) {
 	if regex.MatchString(basename) {
 		matches := regex.FindAllString(basename, -1)
 		name := basename[:strings.Index(basename, matches[0])]
-		logging.Info("reg: ", matches, name)
+		logging.Info("reg", slog.Any("matches", matches), slog.String("name", name))
 		return name, matches[0], true
 	}
 	return name, "", false
@@ -130,7 +131,7 @@ func SearchNotTidyFiles(save_path string) ([]string, error) {
 		return nil
 	})
 	for _, v := range files {
-		logging.Info(v)
+		logging.Info("file", slog.String("path", v))
 	}
 	return files, nil
 }
@@ -150,7 +151,7 @@ func TidyAllFiles(save_path string) error {
 	for _, file := range files {
 		filename = filepath.Base(file)
 		folded_program_name, ep_string := GetProgramName(filename)
-		logging.Info("program_name: ", filename)
+		logging.Info("program_name", slog.String("path", filename))
 		subtitle, err := GetSubtitle(filename)
 		if err != nil && !errors.Is(err, SubtitleNotFoundError(filename)) {
 			log.Fatal(err)
@@ -186,10 +187,10 @@ func TidyAllFiles(save_path string) error {
 		if strings.HasSuffix(program_save_path, " ") {
 			program_save_path = program_save_path[:len(program_save_path)-1]
 		}
-		logging.Info("save path: ", program_save_path)
+		logging.Info("save", slog.String("path", program_save_path))
 		err = os.Mkdir(program_save_path, 0755)
 		if err != nil && !os.IsExist(err) {
-			logging.Error("failed to mkdir: ", program_save_path)
+			logging.Error("failed to mkdir: ", slog.Any("error", err))
 		}
 
 		save := filepath.Join(program_save_path, conv_filename)
@@ -197,10 +198,10 @@ func TidyAllFiles(save_path string) error {
 		err = os.Rename(file, save)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				logging.Info("The file or directory does not exist: %s, %s\n", file, save)
+				logging.Info("the file or directory does not exist", slog.String("path", file), slog.String("save path", save))
 				continue
 			}
-			logging.Error("failed to rename: ", err)
+			logging.Error("failed to rename: ", slog.Any("error", err))
 			continue
 		}
 	}

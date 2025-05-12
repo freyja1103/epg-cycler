@@ -23,10 +23,6 @@ func UnSupoortedCharCodeError(s string) error {
 	return errors.New("unsupported character code: Garbled text might be occurring. \nIf you are using a .bat file in the command prompt, please add \"chcp 65001\" at the beginning to load it as UTF-8 encoding.\n")
 }
 
-func WarnProgramName() error {
-	return errors.New("the format of the program name is not supported. the name of the created directory may differ from the actual program name.")
-}
-
 func SubtitleNotFoundError(s string) error {
 	return errors.New("not found subtitle :" + s)
 }

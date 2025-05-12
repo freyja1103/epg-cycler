@@ -1,10 +1,14 @@
 package main
 
 import (
+	"log/slog"
+	"os"
 	"testing"
 )
 
 func TestGetProgramName(t *testing.T) {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
 	for idx, basename := range testcase {
 		name, _ := GetProgramName(basename)
 		if correctcase[idx] != name {

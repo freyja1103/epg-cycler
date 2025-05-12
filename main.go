@@ -48,7 +48,7 @@ func main() {
 	// 一括整理モード
 	if *all_tidy_mode {
 		if err := TidyAllFiles(save_path); err != nil {
-			logging.Error("failed to tidy all files:", err)
+			logging.Error("failed to tidy all files:", slog.Any("error", err))
 			return
 		}
 		return
@@ -56,32 +56,32 @@ func main() {
 
 	if !(*all_tidy_mode) {
 		if err := CheckArg(*title, args); err != nil {
-			logging.Error("failed to check arg:", err)
+			logging.Error("failed to check arg:", slog.Any("error", err))
 			return
 		}
 
 		logging.SrcLog(*title, *basename, *number)
 		err := dirTidy(save_path, origin_path, title, basename)
 		if err != nil {
-			logging.Error("failed to tidy directory:", err)
+			logging.Error("failed to tidy directory:", slog.Any("error", err))
 			return
 		}
 
 		body, err := GetEnumReserveInfo(*ADDRESS)
 		if err != nil {
-			logging.Error("failed to get reverve info ", err)
+			logging.Error("failed to get reverve info ", slog.Any("error", err))
 		}
 
 		var entry Entry
 		err = xml.Unmarshal(body, &entry)
 		if err != nil {
-			logging.Error("failed to unmarshal xml: ", err)
+			logging.Error("failed to unmarshal xml: ", slog.Any("error", err))
 		}
 
 		hasReserve, _, err := HasRemainReserve(&entry)
 		if hasReserve {
 			if err != nil {
-				logging.Error("failed to check reserve: ", err)
+				logging.Error("failed to check reserve: ", slog.Any("error", err))
 			}
 			return
 		}
@@ -89,7 +89,7 @@ func main() {
 		for _, p := range tp {
 			isExec, err := NoShutdownTrigger(p)
 			if err != nil {
-				logging.Error("failed to check process: ", err)
+				logging.Error("failed to check process: ", slog.Any("error", err))
 				return
 			}
 			if isExec {
@@ -99,7 +99,7 @@ func main() {
 
 		// shutdown
 		if ExecShutdown() != nil {
-			logging.Error("failed to execute shutdown: ", err)
+			logging.Error("failed to execute shutdown: ", slog.Any("error", err))
 		}
 	}
 
@@ -220,7 +220,7 @@ func OperateFile(save_path, origin_path, title, program_name string, files []str
 		err := os.Rename((filepath.Join(filepath.Dir(origin_path), file)), filepath.Join(program_save_path, converted_names[idx]))
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				slog.Error("failed to operate file: %s, %s\n", os.ErrNotExist, filepath.Join(filepath.Dir(origin_path), converted_names[idx]))
+				slog.Error("failed to operate file: %s, %s\n", os.ErrNotExist.Error(), filepath.Join(filepath.Dir(origin_path), converted_names[idx]))
 				continue
 			}
 			return err
