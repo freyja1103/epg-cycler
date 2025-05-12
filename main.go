@@ -74,7 +74,7 @@ func main() {
 		}
 
 		logging.SrcLog(*title, *basename, *number)
-		err := dirTidy(save_path, origin_path, title, basename)
+		err := tidyDirectory(save_path, origin_path, title, basename)
 		if err != nil {
 			logging.Error("failed to tidy directory:", slog.Any("error", err))
 			return
@@ -118,7 +118,7 @@ func main() {
 
 }
 
-func dirTidy(save_path, origin_path string, title, basename *string) error {
+func tidyDirectory(save_path, origin_path string, title, basename *string) error {
 	// basename -> $FileName$
 	var (
 		ts_filename      string   = *basename + ".ts"
@@ -130,6 +130,7 @@ func dirTidy(save_path, origin_path string, title, basename *string) error {
 		program_name     string
 		err              error
 	)
+
 	origin_program_name, ep_string := GetProgramName(*basename)
 	isInvalid, _ := isInvalidName(*basename)
 	if isInvalid {
@@ -224,7 +225,9 @@ func OperateFile(save_path, origin_path, title, program_name string, files []str
 	if err != nil && os.IsNotExist(err) {
 		return err
 	}
-
+	if err == nil {
+		logging.Info("created directory", slog.String("path", program_save_path))
+	}
 	if strings.HasSuffix(program_save_path, " ") {
 		program_save_path = program_save_path[:len(program_save_path)-1]
 	}
@@ -233,12 +236,12 @@ func OperateFile(save_path, origin_path, title, program_name string, files []str
 		err := os.Rename((filepath.Join(filepath.Dir(origin_path), file)), filepath.Join(program_save_path, converted_names[idx]))
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				slog.Error("failed to operate file: %s, %s\n", os.ErrNotExist.Error(), filepath.Join(filepath.Dir(origin_path), converted_names[idx]))
+				slog.Error("failed to operate file", slog.Any("error", os.ErrNotExist), slog.String("old_path", filepath.Join(filepath.Dir(origin_path), file)), slog.String("new_path", filepath.Join(program_save_path, converted_names[idx])))
 				continue
 			}
 			return err
 		}
-
+		logging.Info("successfully moved file", slog.String("old_path", filepath.Join(filepath.Dir(origin_path), file)), slog.String("new_path", filepath.Join(program_save_path, converted_names[idx])))
 	}
 	return nil
 }
