@@ -50,8 +50,8 @@ func main() {
 	title := flag.String(args[2], "", "a program's name")
 	basename := flag.String(args[3], "", "filename without ext")
 	number := flag.String(args[4], "number", "episode number")
-	flag.Var(&tp, "process", "process that prevent shutdown")
-	ADDRESS := flag.String(args[8], "localhost:5510", "the server address in host:port format (e.g., localhost:5510)")
+	flag.Var(&tp, args[5], "process that prevent shutdown")
+	ADDRESS := flag.String(args[6], "localhost:5510", "the server address in host:port format (e.g., localhost:5510)")
 	all_tidy_mode := flag.Bool(args[7], false, "The mode for sorting all the recording files in the directory at once")
 	flag.Parse()
 
