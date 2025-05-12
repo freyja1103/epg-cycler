@@ -29,15 +29,16 @@ func main() {
 	args[3] = "basename"
 	args[4] = "number"
 	args[5] = "process"
-	args[6] = "ip"
+	args[6] = "address"
 	args[7] = "all"
+
 	s_path := flag.String(args[0], "", "save video path")
 	o_path := flag.String(args[1], "", "origin video path")
 	title := flag.String(args[2], "", "a program's name")
 	basename := flag.String(args[3], "", "filename without ext")
 	number := flag.String(args[4], "number", "episode number")
 	flag.Var(&tp, "process", "process that prevent shutdown")
-	HOSTNAME := flag.String(args[6], "localhost:5510", "EpgTimer's HTTP server, IP:port")
+	ADDRESS := flag.String(args[8], "localhost:5510", "the server address in host:port format (e.g., localhost:5510)")
 	all_tidy_mode := flag.Bool(args[7], false, "The mode for sorting all the recording files in the directory at once")
 	flag.Parse()
 
@@ -66,7 +67,7 @@ func main() {
 			return
 		}
 
-		body, err := GetEnumReserveInfo(*HOSTNAME)
+		body, err := GetEnumReserveInfo(*ADDRESS)
 		if err != nil {
 			logging.Error("failed to get reverve info ", err)
 		}
