@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"flag"
+	"log"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -14,11 +15,23 @@ import (
 	"github.com/freyja1103/epg-cycler/logging"
 	"github.com/shirou/gopsutil/process"
 	"golang.org/x/text/width"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func main() {
-
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	err := os.Mkdir("epg-cycler-log", 0755)
+	if err != nil && !os.IsExist(err) {
+		log.Println("failed to create log directory:", err)
+		return
+	}
+	rotatingWriter := &lumberjack.Logger{
+		Filename:   "epg-cycler-log/epg-cycler.log",
+		MaxSize:    50,
+		MaxBackups: 3,
+		MaxAge:     7,
+		Compress:   true,
+	}
+	logger := slog.New(slog.NewJSONHandler(rotatingWriter, nil))
 	slog.SetDefault(logger)
 	var tp targetProcesses
 
