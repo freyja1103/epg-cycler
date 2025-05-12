@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/freyja1103/epg-cycler/logging"
 	"golang.org/x/text/width"
 )
 
@@ -27,7 +28,7 @@ func GetProgramName(basename string) (string, string) {
 	if !exist {
 		// たまにイレギュラーで ★最終話 みたいなのがあるので最終手段
 		// タイトル内でスペース区切りの場合は対応してません
-		log.Println(WarnProgramName())
+		logging.Warn(WarnProgramName().Error())
 		if strings.Index(basename, "[") == 0 {
 			end_brackets = strings.Index(basename, "]") + 1
 		}
@@ -72,7 +73,7 @@ func GetNameByRegx(expr, basename string) (string, string, bool) {
 		if regex.MatchString(basename) {
 			matches := regex.FindAllString(basename, -1)
 			name := basename[:strings.Index(basename, matches[0])+7]
-			log.Println("reg: ", matches, name)
+			logging.Info("reg: ", matches, name)
 			return name, matches[0], true
 		}
 	}
@@ -81,7 +82,7 @@ func GetNameByRegx(expr, basename string) (string, string, bool) {
 	if regex.MatchString(basename) {
 		matches := regex.FindAllString(basename, -1)
 		name := basename[:strings.Index(basename, matches[0])]
-		log.Println("reg: ", matches, name)
+		logging.Info("reg: ", matches, name)
 		return name, matches[0], true
 	}
 	return name, "", false
@@ -129,7 +130,7 @@ func SearchNotTidyFiles(save_path string) ([]string, error) {
 		return nil
 	})
 	for _, v := range files {
-		log.Println(v)
+		logging.Info(v)
 	}
 	return files, nil
 }
@@ -149,7 +150,7 @@ func TidyAllFiles(save_path string) error {
 	for _, file := range files {
 		filename = filepath.Base(file)
 		folded_program_name, ep_string := GetProgramName(filename)
-		log.Println("program_name: ", filename)
+		logging.Info("program_name: ", filename)
 		subtitle, err := GetSubtitle(filename)
 		if err != nil && !errors.Is(err, SubtitleNotFoundError(filename)) {
 			log.Fatal(err)
@@ -163,15 +164,15 @@ func TidyAllFiles(save_path string) error {
 		isInvalidProgramName, _ := isInvalidName(folded_program_name)
 
 		if isInvalid {
-			DebugLog("Will be invalid filename, no convert fold style")
+			logging.Info("Will be invalid filename, no convert fold style")
 			if !isInvalidProgramName && isInvalidSubtitle {
-				DebugLog("Only subtitle is invalid")
+				logging.Info("Only subtitle is invalid")
 				// only subtitle is invalid
 
 				conv_filename = ConcatFilename(filename, folded_program_name, width.Widen.String(subtitle), ep_string, filepath.Ext(file))
 				program_name = folded_program_name
 			} else {
-				DebugLog("Program name is invalid")
+				logging.Info("Program name is invalid")
 
 				conv_filename = ConcatFilename(filename, width.Widen.String(folded_program_name), width.Fold.String(subtitle), ep_string, filepath.Ext(file))
 				program_name = width.Widen.String(folded_program_name)
@@ -185,21 +186,21 @@ func TidyAllFiles(save_path string) error {
 		if strings.HasSuffix(program_save_path, " ") {
 			program_save_path = program_save_path[:len(program_save_path)-1]
 		}
-		log.Println("save path: ", program_save_path)
+		logging.Info("save path: ", program_save_path)
 		err = os.Mkdir(program_save_path, 0755)
 		if err != nil && !os.IsExist(err) {
-			Errorlog(err)
+			logging.Error("failed to mkdir: ", program_save_path)
 		}
 
 		save := filepath.Join(program_save_path, conv_filename)
-		log.Println("move to :", save)
+		logging.Info("move to :", save)
 		err = os.Rename(file, save)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				log.Printf("The file or directory does not exist: %s, %s\n", file, save)
+				logging.Info("The file or directory does not exist: %s, %s\n", file, save)
 				continue
 			}
-			Errorlog(err)
+			logging.Error("failed to rename: ", err)
 			continue
 		}
 	}

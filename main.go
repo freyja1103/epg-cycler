@@ -4,20 +4,22 @@ import (
 	"encoding/xml"
 	"errors"
 	"flag"
-	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 
+	"github.com/freyja1103/epg-cycler/logging"
 	"github.com/shirou/gopsutil/process"
 	"golang.org/x/text/width"
 )
 
 func main() {
 
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
 	var tp targetProcesses
 
 	args := make([]string, 8)
@@ -45,7 +47,7 @@ func main() {
 	// 一括整理モード
 	if *all_tidy_mode {
 		if err := TidyAllFiles(save_path); err != nil {
-			Errorlog(err)
+			logging.Error("failed to tidy all files:", err)
 			return
 		}
 		return
@@ -53,33 +55,33 @@ func main() {
 
 	if !(*all_tidy_mode) {
 		if err := CheckArg(*title, args); err != nil {
-			Errorlog(err)
+			logging.Error("failed to check arg:", err)
 			return
 		}
 
-		SrcLog(*title, *basename, *number)
+		logging.SrcLog(*title, *basename, *number)
 		err := dirTidy(save_path, origin_path, title, basename)
 		if err != nil {
-			Errorlog(err)
+			logging.Error("failed to tidy directory:", err)
 			return
 		}
 
 		url := "http://" + *APIURL + "/api/EnumReserveInfo"
 		body, err := APIReq2Body(url)
 		if err != nil {
-			Errorlog(err)
+			logging.Error("failed to get reverve info ", err)
 		}
 
 		var entry Entry
 		err = xml.Unmarshal(body, &entry)
 		if err != nil {
-			Errorlog(err)
+			logging.Error("failed to unmarshal xml: ", err)
 		}
 
 		hasReserve, _, err := HasRemainReserve(&entry)
 		if hasReserve {
 			if err != nil {
-				Errorlog(err)
+				logging.Error("failed to check reserve: ", err)
 			}
 			return
 		}
@@ -87,7 +89,7 @@ func main() {
 		for _, p := range tp {
 			isExec, err := NoShutdownTrigger(p)
 			if err != nil {
-				Errorlog(err)
+				logging.Error("failed to check process: ", err)
 				return
 			}
 			if isExec {
@@ -97,7 +99,7 @@ func main() {
 
 		// shutdown
 		if ExecShutdown() != nil {
-			Errorlog(err)
+			logging.Error("failed to execute shutdown: ", err)
 		}
 	}
 
@@ -118,7 +120,7 @@ func dirTidy(save_path, origin_path string, title, basename *string) error {
 	origin_program_name, ep_string := GetProgramName(*basename)
 	isInvalid, _ := isInvalidName(*basename)
 	if isInvalid {
-		DebugLog("Will be invalid filename, no convert fold style")
+		logging.Info("will be invalid filename, no convert fold style")
 		subtitle, err = GetSubtitle(fold_ts_filename)
 		if err != nil {
 			return err
@@ -181,7 +183,7 @@ func ExecShutdown() error {
 		if cmd.Err != nil {
 			return cmd.Err
 		}
-		DebugLog("execute shutdown")
+		logging.Info("execute shutdown")
 		// Runだとシャットダウンし終えるまで処理が進まなくなるのでStartを使う
 		if err := cmd.Start(); err != nil {
 			return err
@@ -193,7 +195,7 @@ func ExecShutdown() error {
 		if cmd.Err != nil {
 			return cmd.Err
 		}
-		DebugLog("execute shutdown")
+		logging.Info("execute shutdown")
 		if err := cmd.Start(); err != nil {
 			return err
 		}
@@ -218,7 +220,7 @@ func OperateFile(save_path, origin_path, title, program_name string, files []str
 		err := os.Rename((filepath.Join(filepath.Dir(origin_path), file)), filepath.Join(program_save_path, converted_names[idx]))
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				log.Printf("%s: %s\n", os.ErrNotExist, filepath.Join(filepath.Dir(origin_path), converted_names[idx]))
+				slog.Error("failed to operate file: %s, %s\n", os.ErrNotExist, filepath.Join(filepath.Dir(origin_path), converted_names[idx]))
 				continue
 			}
 			return err
