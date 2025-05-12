@@ -5,22 +5,23 @@
 
 ### 動作
 
--   録画したファイルをタイトル別にフォルダを作成し，そのフォルダ内に保存します．
-    -   基本半角に変換して保存します．
--   録画後に次の日の朝 4 時までに予約がない場合は，システムをシャットダウンします．
-    -   `-process=hoge.exe`のようにプロセス名を指定することで，一致したプロセスが動作中の場合にシャットダウンを防ぎます．
+- 録画したファイルをタイトル別にフォルダを作成し，そのフォルダ内に保存します．
+  - 基本半角に変換して保存します．
+- 録画後に次の日の朝 4 時までに予約がない場合は，システムをシャットダウンします．
+  - `-process=hoge.exe`のようにプロセス名を指定することで，一致したプロセスが動作中の場合にシャットダウンを防ぎます．
 
 ### 使い方
 
--   EpgTimer 側で HTTP サーバを有効化しておきます．
--   `go build .` or [release](https://github.com/freyja1103/epg-cycler/releases) からダウンロードした後に，
+- EpgTimer 側で HTTP サーバを有効化しておきます．
+- `go build .` or [release](https://github.com/freyja1103/epg-cycler/releases) からダウンロードした後に，
 
 ```
-chcp 65001
+chcp 65001 # 文字化け回避
 epg-cycler.exe -srcpath="save/path" -originpath=$FilePath$ -title=$TitleF$ -basename=$FileName$ -process="something.exe"
 ```
 
 のような bat ファイルを作り，EpgTimer 側の録画後実行 bat に設定します．
+参考: [バッチで利用できるマクロについて](https://github.com/xtne6f/EDCB/blob/060fa328d8854b1f8b2016a12cbeecaa801a8006/Document/Readme_EpgTimer.txt#L929)
 
 #### params
 
@@ -36,4 +37,4 @@ epg-cycler.exe -srcpath="save/path" -originpath=$FilePath$ -title=$TitleF$ -base
 
 #### ほか
 
--   一括整理用に`-all`オプション作りました．`-savepath`と併せて使ってください．
+- 一括整理用に`-all`オプション作りました．`-savepath`と併せて使ってください．
