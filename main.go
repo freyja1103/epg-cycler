@@ -37,7 +37,7 @@ func main() {
 	basename := flag.String(args[3], "", "filename without ext")
 	number := flag.String(args[4], "number", "episode number")
 	flag.Var(&tp, "process", "process that prevent shutdown")
-	APIURL := flag.String(args[6], "localhost:5510", "EpgTimer's HTTP server, IP:port")
+	HOSTNAME := flag.String(args[6], "localhost:5510", "EpgTimer's HTTP server, IP:port")
 	all_tidy_mode := flag.Bool(args[7], false, "The mode for sorting all the recording files in the directory at once")
 	flag.Parse()
 
@@ -66,8 +66,7 @@ func main() {
 			return
 		}
 
-		url := "http://" + *APIURL + "/api/EnumReserveInfo"
-		body, err := APIReq2Body(url)
+		body, err := GetEnumReserveInfo(*HOSTNAME)
 		if err != nil {
 			logging.Error("failed to get reverve info ", err)
 		}

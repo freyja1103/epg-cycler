@@ -61,8 +61,8 @@ type TimeInfo struct {
 	StartTime string
 }
 
-func APIReq2Body(url string) ([]byte, error) {
-	res, err := http.Get(url)
+func GetEnumReserveInfo(hostname string) ([]byte, error) {
+	res, err := http.Get("http://" + hostname + "/api/EnumReserveInfo")
 	if err != nil {
 		return nil, err
 	}

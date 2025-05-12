@@ -10,8 +10,7 @@ import (
 )
 
 func TestEDCBAPI(t *testing.T) {
-	url := "http://localhost:5510/api/EnumReserveInfo"
-	body, err := APIReq2Body(url)
+	body, err := GetEnumReserveInfo("localhost:5510")
 	if err != nil {
 		logging.Error(err.Error())
 	}
