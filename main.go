@@ -68,6 +68,23 @@ func main() {
 	}
 
 	if !(*all_tidy_mode) {
+		if save_path == "" {
+			logging.Error("save path is empty")
+			return
+		}
+		if origin_path == "" {
+			logging.Error("origin path is empty")
+			return
+		}
+		if *title == "" {
+			logging.Error("title is empty")
+			return
+		}
+		if *basename == "" {
+			logging.Error("basename is empty")
+			return
+		}
+
 		if err := CheckArg(*title, args); err != nil {
 			logging.Error("failed to check arg:", slog.Any("error", err))
 			return
