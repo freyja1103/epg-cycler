@@ -1,0 +1,17 @@
+project_name: epg-cycler
+
+builds:
+  - dir: .
+    goos: [windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+
+archives:
+  - format: tar.gz
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
