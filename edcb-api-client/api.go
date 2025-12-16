@@ -5,11 +5,18 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"log"
+	"log/slog"
 	"net/http"
+	"net/url"
+	"time"
+
+	"github.com/freyja1103/epg-cycler/edcb-api-client/dto"
 )
 
 type API interface {
-	GetEnumReserveInfo(ctx context.Context) (*ReserveInfoEntry, error)
+	GetEnumReserveInfo(ctx context.Context) (*dto.ReserveInfoEntry, error)
+	GetEnumRecInfo(ctx context.Context, id string) ([]*RecInfo, error)
 }
 
 func NewEDCBAPIClient(hostname string, client *http.Client) API {
@@ -36,7 +43,7 @@ func (a *api) BaseURL() string {
 	return fmt.Sprintf("http://%s/api", a.hostname)
 }
 
-func (a *api) GetEnumReserveInfo(ctx context.Context) (*ReserveInfoEntry, error) {
+func (a *api) GetEnumReserveInfo(ctx context.Context) (*dto.ReserveInfoEntry, error) {
 	dest := fmt.Sprintf("%s/EnumReserveInfo", a.BaseURL())
 	res, err := a.get(ctx, dest)
 	if err != nil {
@@ -49,11 +56,69 @@ func (a *api) GetEnumReserveInfo(ctx context.Context) (*ReserveInfoEntry, error)
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	entry := new(ReserveInfoEntry)
+	entry := new(dto.ReserveInfoEntry)
 	err = xml.Unmarshal(body, &entry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal xml: %w", err)
 	}
 
 	return entry, nil
+}
+
+func (a *api) GetEnumRecInfo(ctx context.Context, id string) ([]*RecInfo, error) {
+	dest := fmt.Sprintf("%s/EnumRecInfo", a.BaseURL())
+
+	uv := url.Values{}
+	uv.Add("id", id)
+
+	res, err := a.get(ctx, dest+"?"+uv.Encode())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get EnumRecInfo: %w", err)
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	entry := new(dto.RecInfoEntry)
+	err = xml.Unmarshal(body, &entry)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal xml: %w", err)
+	}
+
+	return toRecInfo(entry), nil
+}
+
+func toRecInfo(entry *dto.RecInfoEntry) []*RecInfo {
+	recInfos := make([]*RecInfo, 0, len(entry.Items.RecInfos))
+	for _, r := range entry.Items.RecInfos {
+		startTime, err := parseDateTime(r.StartDate, r.StartTime)
+		if err != nil {
+			slog.Error("failed to parse date time", slog.Any("error", err))
+			continue
+		}
+		recInfos = append(recInfos, &RecInfo{
+			ID:          r.ID,
+			Duration:    r.Duration,
+			StartTime:   startTime,
+			RecFilePath: r.RecFilePath,
+			Title:       r.Title,
+			ServiceName: r.ServiceName,
+		})
+	}
+	return recInfos
+}
+
+func parseDateTime(dateStr, timeStr string) (time.Time, error) {
+	loc, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		log.Fatal(err)
+	}
+	return time.ParseInLocation(
+		"2006/01/02 15:04:05",
+		dateStr+" "+timeStr,
+		loc,
+	)
 }

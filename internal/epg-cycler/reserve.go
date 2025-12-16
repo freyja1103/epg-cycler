@@ -3,7 +3,7 @@ package epgcycler
 import (
 	"time"
 
-	edcbapiclient "github.com/freyja1103/epg-cycler/edcb-api-client"
+	"github.com/freyja1103/epg-cycler/edcb-api-client/dto"
 )
 
 type ReserveInfo struct {
@@ -12,7 +12,7 @@ type ReserveInfo struct {
 	StartTime string
 }
 
-func (e *epgCycler) HasReserve(entry *edcbapiclient.ReserveInfoEntry) (bool, []*ReserveInfo, error) {
+func (e *epgCycler) HasReserve(entry *dto.ReserveInfoEntry) (bool, []*ReserveInfo, error) {
 	now := time.Now()
 	nowDate, err := time.Parse("2006/01/02", now.Format("2006/01/02"))
 	if err != nil {

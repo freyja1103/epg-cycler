@@ -1,7 +1,17 @@
 package edcbapiclient
 
-type Items struct {
-	ReserveInfo []ReserveInfo `xml:"reserveinfo"`
+import "encoding/xml"
+
+type ReserveInfoEntry struct {
+	XMLName xml.Name         `xml:"entry"`
+	Total   int              `xml:"total"`
+	Index   int              `xml:"index"`
+	Count   int              `xml:"count"`
+	Items   ReserveInfoItems `xml:"items"`
+}
+
+type ReserveInfoItems struct {
+	ReserveInfo []*ReserveInfo `xml:"reserveinfo"`
 }
 
 type ReserveInfo struct {
