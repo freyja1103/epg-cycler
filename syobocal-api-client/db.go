@@ -22,7 +22,7 @@ type ProgLookupParams struct {
 	PIDs       []string
 }
 
-func (a *api) ProgLookup(ctx context.Context, params *ProgLookupParams) ([]*dto.ProgItem, error) {
+func (a *api) ProgLookup(ctx context.Context, params *ProgLookupParams) ([]*ProgItem, error) {
 	if params == nil {
 		return nil, fmt.Errorf("params must be set")
 	}
@@ -74,7 +74,31 @@ func (a *api) ProgLookup(ctx context.Context, params *ProgLookupParams) ([]*dto.
 		return nil, fmt.Errorf("API error: %d %s", r.Result.Code, r.Result.Message)
 	}
 
-	return r.ProgItems.ProgItem, nil
+	return ToProgItem(r.ProgItems.ProgItem), nil
+}
+
+func ToProgItem(items []*dto.ProgItem) []*ProgItem {
+	p := make([]*ProgItem, 0, len(items))
+	for _, item := range items {
+		p = append(p, &ProgItem{
+			ID:          item.ID,
+			PID:         item.PID,
+			TID:         item.TID,
+			StOffset:    item.StOffset,
+			Count:       item.Count,
+			Flag:        item.Flag,
+			Deleted:     item.Deleted,
+			Warn:        item.Warn,
+			ChID:        item.ChID,
+			Revision:    item.Revision,
+			StTime:      item.StTime,
+			SubTitle:    item.SubTitle,
+			ProgComment: item.ProgComment,
+			EdTime:      item.EdTime,
+			LastUpdate:  item.LastUpdate,
+		})
+	}
+	return p
 }
 
 type TitleLookupParams struct {
@@ -83,7 +107,7 @@ type TitleLookupParams struct {
 	Fields     []Field
 }
 
-func (a *api) TitleLookup(params *TitleLookupParams) ([]*dto.TitleItem, error) {
+func (a *api) TitleLookup(ctx context.Context, params *TitleLookupParams) ([]*TitleItem, error) {
 	if params == nil {
 		return nil, fmt.Errorf("params must be set")
 	}
@@ -115,5 +139,33 @@ func (a *api) TitleLookup(params *TitleLookupParams) ([]*dto.TitleItem, error) {
 	if r.Result.Code != http.StatusOK {
 		return nil, fmt.Errorf("API error: %d %s", r.Result.Code, r.Result.Message)
 	}
-	return r.TitleItems.TitleItem, nil
+	return toTitleItem(r.TitleItems.TitleItem), nil
+}
+
+func toTitleItem(items []*dto.TitleItem) []*TitleItem {
+	t := make([]*TitleItem, 0, len(items))
+	for _, item := range items {
+		t = append(t, &TitleItem{
+			ID:            item.ID,
+			TID:           item.TID,
+			LastUpdate:    item.LastUpdate,
+			Title:         item.Title,
+			ShortTitle:    item.ShortTitle,
+			TitleYomi:     item.TitleYomi,
+			TitleEN:       item.TitleEN,
+			Comment:       item.Comment,
+			Cat:           item.Cat,
+			TitleFlag:     item.TitleFlag,
+			FirstYear:     item.FirstYear,
+			FirstMonth:    item.FirstMonth,
+			FirstEndYear:  item.FirstEndYear,
+			FirstEndMonth: item.FirstEndMonth,
+			FirstCh:       item.FirstCh,
+			Keywords:      item.Keywords,
+			UserPoint:     item.UserPoint,
+			UserPointRank: item.UserPointRank,
+			SubTitles:     item.SubTitles,
+		})
+	}
+	return t
 }

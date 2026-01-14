@@ -10,6 +10,7 @@ import (
 
 	edcbapiclient "github.com/freyja1103/epg-cycler/edcb-api-client"
 	epgcycler "github.com/freyja1103/epg-cycler/internal/epg-cycler"
+	syobocalapiclient "github.com/freyja1103/epg-cycler/syobocal-api-client"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -70,10 +71,11 @@ func (tp *targetProcesses) Set(value string) error {
 
 func (o *Options) run(ctx context.Context) error {
 	edcbapi := edcbapiclient.NewEDCBAPIClient(o.Address, nil)
+	syobocalapi := syobocalapiclient.NewSyobocalAPIClient(nil)
 
-	ec := epgcycler.NewEPGCycler(edcbapi, &epgcycler.Config{
+	ec := epgcycler.NewEPGCycler(edcbapi, syobocalapi, &epgcycler.Config{
 		ReserveCutoffHour: 4,
-		File: &epgcycler.File{
+		File: &epgcycler.ProgramFile{
 			BaseName:        o.BaseName,
 			OriginPath:      o.OriginPath,
 			DestinationPath: o.DestinationPath,
@@ -85,7 +87,7 @@ func (o *Options) run(ctx context.Context) error {
 	}
 
 	if !o.IsTidyMode {
-		if err := ec.SimpleTidy(ctx, epgcycler.NewProgram(o.BaseName, o.Title, o.Episode)); err != nil {
+		if err := ec.SimpleTidy(ctx); err != nil {
 			slog.ErrorContext(ctx, "failed to tidy", slog.Any("error", err))
 			return err
 		}

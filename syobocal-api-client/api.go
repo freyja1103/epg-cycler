@@ -7,8 +7,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-
-	"github.com/freyja1103/epg-cycler/syobocal-api-client/dto"
 )
 
 type api struct {
@@ -24,8 +22,8 @@ func NewSyobocalAPIClient(client *http.Client) API {
 }
 
 type API interface {
-	ProgLookup(ctx context.Context, params *ProgLookupParams) ([]*dto.ProgItem, error)
-	TitleLookup(params *TitleLookupParams) ([]*dto.TitleItem, error)
+	ProgLookup(ctx context.Context, params *ProgLookupParams) ([]*ProgItem, error)
+	TitleLookup(ctx context.Context, params *TitleLookupParams) ([]*TitleItem, error)
 }
 
 func (a *api) get(ctx context.Context, url string, params url.Values) (*http.Response, error) {
@@ -37,7 +35,7 @@ func (a *api) call(ctx context.Context, method string, url string) (*http.Respon
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
-	// MEMO: User-Agent is required by Syoboi Calendar API
+	// req.Header.Set("User-Agent", "syobocal-api-client (+https://github.com/freyja1103/epg-cycler)")
 	res, err := a.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call API: %v", err)

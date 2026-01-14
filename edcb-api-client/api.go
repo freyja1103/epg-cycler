@@ -16,7 +16,7 @@ import (
 
 type API interface {
 	GetEnumReserveInfo(ctx context.Context) (*dto.ReserveInfoEntry, error)
-	GetEnumRecInfo(ctx context.Context, id string) ([]*RecInfo, error)
+	GetEnumRecInfo(ctx context.Context, params *EnumRecInfoParams) ([]*RecInfo, error)
 }
 
 func NewEDCBAPIClient(hostname string, client *http.Client) API {
@@ -65,12 +65,16 @@ func (a *api) GetEnumReserveInfo(ctx context.Context) (*dto.ReserveInfoEntry, er
 	return entry, nil
 }
 
-func (a *api) GetEnumRecInfo(ctx context.Context, id string) ([]*RecInfo, error) {
+type EnumRecInfoParams struct {
+	ID string
+}
+
+func (a *api) GetEnumRecInfo(ctx context.Context, params *EnumRecInfoParams) ([]*RecInfo, error) {
 	dest := fmt.Sprintf("%s/EnumRecInfo", a.BaseURL())
-
 	uv := url.Values{}
-	uv.Add("id", id)
-
+	if params != nil {
+		uv.Add("id", params.ID)
+	}
 	res, err := a.get(ctx, dest+"?"+uv.Encode())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get EnumRecInfo: %w", err)
@@ -101,11 +105,12 @@ func toRecInfo(entry *dto.RecInfoEntry) []*RecInfo {
 		}
 		recInfos = append(recInfos, &RecInfo{
 			ID:          r.ID,
+			ServiceID:   r.SID,
+			ServiceName: r.ServiceName,
 			Duration:    r.Duration,
 			StartTime:   startTime,
 			RecFilePath: r.RecFilePath,
 			Title:       r.Title,
-			ServiceName: r.ServiceName,
 		})
 	}
 	return recInfos
