@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	edcbapiclient "github.com/freyja1103/epg-cycler/edcb-api-client"
@@ -53,6 +55,9 @@ func (e *epgCycler) SimpleTidy(ctx context.Context) error {
 		return errors.New("no recording info found")
 	}
 
+	// TODO: get program info from sqlite
+	//
+
 	endTime := rec[0].StartTime.Add(time.Duration(rec[0].Duration))
 	prog, err := e.SyobocalAPI.ProgLookup(ctx, &syobocalapiclient.ProgLookupParams{
 		ChIDs: []string{SIDToChID[fmt.Sprintf("%d", rec[0].ServiceID)]},
@@ -64,6 +69,9 @@ func (e *epgCycler) SimpleTidy(ctx context.Context) error {
 	title, err := e.SyobocalAPI.TitleLookup(ctx, &syobocalapiclient.TitleLookupParams{
 		TIDs: []string{fmt.Sprintf("%d", prog[0].TID)},
 	})
+
+	// TODO: save program info to sqlite
+	//
 
 	if err = e.tidyDirectory(ctx, title[0].Title); err != nil {
 		return err
@@ -109,6 +117,40 @@ func (e *epgCycler) tidyDirectory(ctx context.Context, title string) error {
 	}
 
 	return nil
+}
+
+type EpgCyclerTidyAllFiles struct {
+	SavePath string
+}
+
+func (e *epgCycler) TidyAllFiles(in *EpgCyclerTidyAllFiles) error {
+	_, err := seatchTargetFiles(in.SavePath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func seatchTargetFiles(savePath string) ([]string, error) {
+	files := []string{}
+	filepath.WalkDir(savePath, func(path string, info fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		path = filepath.ToSlash(path)
+
+		if (filepath.ToSlash(filepath.Dir(path)) == savePath && !info.Type().IsDir()) &&
+			(strings.Contains(filepath.Ext(path), ".ts") || strings.Contains(filepath.Ext(path), ".err") || strings.Contains(filepath.Ext(path), ".txt")) {
+			files = append(files, path)
+		}
+		return nil
+	})
+
+	for _, v := range files {
+		slog.Info("file", slog.String("path", v))
+	}
+	return files, nil
 }
 
 func execShutdown() error {
