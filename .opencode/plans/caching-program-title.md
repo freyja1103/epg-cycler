@@ -2,7 +2,11 @@
 
 ## Overview
 
-This document describes the implementation plan for caching program information fetched from Syobocal API using SQLite database. The cache will store program titles and metadata to reduce API calls and improve performance.
+This document describes the implementation of caching program information fetched from Syobocal API using SQLite database. The cache stores program titles and metadata to reduce API calls and improve performance.
+
+## Implementation Status
+
+✅ **COMPLETED** - The caching functionality has been implemented and tested.
 
 ## Database Schema
 
@@ -118,3 +122,29 @@ type Config struct {
 - Cache expiry duration: 90 days (3 months)
 - Database location: Same directory as executable
 - Error handling: Return errors directly (fallback handled by epgCycler)
+
+## Usage
+
+The caching functionality is automatically enabled when running the epg-cycler application. The database is initialized at startup and cleaned of expired entries.
+
+To customize the cache expiry duration, modify the `CacheExpiry` field in the `Config` struct:
+
+```go
+config := &epgcycler.Config{
+    ReserveCutoffHour: 4,
+    CacheExpiry:       30 * 24 * time.Hour, // 30 days
+    File: &epgcycler.ProgramFile{
+        BaseName:        "recording",
+        OriginPath:      "/path/to/recording.ts",
+        DestinationPath: "/path/to/destination/",
+    },
+}
+```
+
+## Testing
+
+Unit tests have been added for the database package to ensure proper functionality:
+
+```bash
+go test -v ./internal/database
+```

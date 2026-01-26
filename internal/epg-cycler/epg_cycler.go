@@ -14,6 +14,7 @@ import (
 	"time"
 
 	edcbapiclient "github.com/freyja1103/epg-cycler/edcb-api-client"
+	"github.com/freyja1103/epg-cycler/internal/database"
 	syobocalapiclient "github.com/freyja1103/epg-cycler/syobocal-api-client"
 )
 
@@ -24,11 +25,13 @@ type epgCycler struct {
 	Config      *Config
 	EDCBAPI     edcbapiclient.API
 	SyobocalAPI syobocalapiclient.API
+	DB          *database.DB
 }
 
 type Config struct {
 	ReserveCutoffHour int
 	File              *ProgramFile
+	CacheExpiry       time.Duration
 }
 
 type ProgramFile struct {
@@ -37,11 +40,17 @@ type ProgramFile struct {
 	DestinationPath string
 }
 
-func NewEPGCycler(edcbapi edcbapiclient.API, syobocalapi syobocalapiclient.API, config *Config) EPGCycler {
+func NewEPGCycler(edcbapi edcbapiclient.API, syobocalapi syobocalapiclient.API, db *database.DB, config *Config) EPGCycler {
+	// Set default cache expiry if not configured
+	if config.CacheExpiry == 0 {
+		config.CacheExpiry = 90 * 24 * time.Hour // 90 days
+	}
+
 	return &epgCycler{
 		Config:      config,
 		EDCBAPI:     edcbapi,
 		SyobocalAPI: syobocalapi,
+		DB:          db,
 	}
 }
 
@@ -55,25 +64,92 @@ func (e *epgCycler) SimpleTidy(ctx context.Context) error {
 		return errors.New("no recording info found")
 	}
 
-	// TODO: get program info from sqlite
-	//
+	// Try to get program info from cache first
+	cachedInput := &database.GetCachedProgramInput{
+		ServiceID: rec[0].ServiceID,
+		StartTime: rec[0].StartTime,
+		Duration:  rec[0].Duration,
+	}
 
-	endTime := rec[0].StartTime.Add(time.Duration(rec[0].Duration))
-	prog, err := e.SyobocalAPI.ProgLookup(ctx, &syobocalapiclient.ProgLookupParams{
-		ChIDs: []string{SIDToChID[fmt.Sprintf("%d", rec[0].ServiceID)]},
-		Range: &syobocalapiclient.Range{
-			From: rec[0].StartTime,
-			To:   &endTime,
-		}})
+	program, err := e.DB.GetCachedProgram(cachedInput)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get cached program info", slog.Any("error", err))
+		return err
+	}
 
-	title, err := e.SyobocalAPI.TitleLookup(ctx, &syobocalapiclient.TitleLookupParams{
-		TIDs: []string{fmt.Sprintf("%d", prog[0].TID)},
-	})
+	var title string
+	if program != nil {
+		// Use cached program info
+		slog.InfoContext(ctx, "using cached program info", slog.String("title", program.Title))
+		title = program.Title
+	} else {
+		// Fetch program info from Syobocal API
+		slog.InfoContext(ctx, "fetching program info from Syobocal API")
 
-	// TODO: save program info to sqlite
-	//
+		endTime := rec[0].StartTime.Add(time.Duration(rec[0].Duration))
+		prog, err := e.SyobocalAPI.ProgLookup(ctx, &syobocalapiclient.ProgLookupParams{
+			ChIDs: []string{SIDToChID[fmt.Sprintf("%d", rec[0].ServiceID)]},
+			Range: &syobocalapiclient.Range{
+				From: rec[0].StartTime,
+				To:   &endTime,
+			}})
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to lookup program", slog.Any("error", err))
+			return err
+		}
 
-	if err = e.tidyDirectory(ctx, title[0].Title); err != nil {
+		if len(prog) == 0 {
+			return errors.New("no program found")
+		}
+
+		titleInfo, err := e.SyobocalAPI.TitleLookup(ctx, &syobocalapiclient.TitleLookupParams{
+			TIDs: []string{fmt.Sprintf("%d", prog[0].TID)},
+		})
+		if err != nil {
+			slog.ErrorContext(ctx, "failed to lookup title", slog.Any("error", err))
+			return err
+		}
+
+		if len(titleInfo) == 0 {
+			return errors.New("no title found")
+		}
+
+		title = titleInfo[0].Title
+
+		// Save program info to database
+		saveProgramInput := &database.SaveProgramInput{
+			TID:        titleInfo[0].TID,
+			SID:        rec[0].ServiceID,
+			ChID:       prog[0].ChID,
+			Title:      titleInfo[0].Title,
+			ShortTitle: titleInfo[0].ShortTitle,
+			TitleYomi:  titleInfo[0].TitleYomi,
+			LastUpdate: titleInfo[0].LastUpdate,
+		}
+
+		if err = e.DB.SaveProgram(saveProgramInput); err != nil {
+			slog.ErrorContext(ctx, "failed to save program info", slog.Any("error", err))
+			// Continue without caching if save fails
+		}
+
+		// Save program cache entry
+		cacheExpiry := time.Now().Add(e.Config.CacheExpiry)
+		saveCacheInput := &database.SaveProgramCacheInput{
+			ServiceID: rec[0].ServiceID,
+			StartTime: rec[0].StartTime,
+			Duration:  rec[0].Duration,
+			TID:       titleInfo[0].TID,
+			Title:     titleInfo[0].Title,
+			ExpiresAt: cacheExpiry,
+		}
+
+		if err = e.DB.SaveProgramCache(saveCacheInput); err != nil {
+			slog.ErrorContext(ctx, "failed to save program cache", slog.Any("error", err))
+			// Continue without caching if save fails
+		}
+	}
+
+	if err = e.tidyDirectory(ctx, title); err != nil {
 		return err
 	}
 

@@ -7,8 +7,10 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 
 	edcbapiclient "github.com/freyja1103/epg-cycler/edcb-api-client"
+	"github.com/freyja1103/epg-cycler/internal/database"
 	epgcycler "github.com/freyja1103/epg-cycler/internal/epg-cycler"
 	syobocalapiclient "github.com/freyja1103/epg-cycler/syobocal-api-client"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -73,7 +75,27 @@ func (o *Options) run(ctx context.Context) error {
 	edcbapi := edcbapiclient.NewEDCBAPIClient(o.Address, nil)
 	syobocalapi := syobocalapiclient.NewSyobocalAPIClient(nil)
 
-	ec := epgcycler.NewEPGCycler(edcbapi, syobocalapi, &epgcycler.Config{
+	// Initialize database
+	executable, err := os.Executable()
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to get executable path", slog.Any("error", err))
+		return err
+	}
+	dbPath := filepath.Join(filepath.Dir(executable), "programs.db")
+	db, err := database.NewDB(dbPath)
+	if err != nil {
+		slog.ErrorContext(ctx, "failed to initialize database", slog.Any("error", err))
+		return err
+	}
+	defer db.Close()
+
+	// Clean up expired cache entries
+	if _, err := db.CleanupExpiredCache(); err != nil {
+		slog.ErrorContext(ctx, "failed to cleanup expired cache", slog.Any("error", err))
+		// Continue even if cleanup fails
+	}
+
+	ec := epgcycler.NewEPGCycler(edcbapi, syobocalapi, db, &epgcycler.Config{
 		ReserveCutoffHour: 4,
 		File: &epgcycler.ProgramFile{
 			BaseName:        o.BaseName,
